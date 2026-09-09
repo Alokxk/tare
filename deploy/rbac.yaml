@@ -1,0 +1,55 @@
+# Every permission Tare needs, and nothing else. The verbs are get and list
+# only: Tare never writes, and never watches.
+#
+# Apply with:  kubectl apply -f rbac.yaml
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: tare
+  namespace: kube-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: tare-reader
+rules:
+  # Namespaces scope the report; pods carry the containers whose requests and
+  # limits the overprovisioning ratio is built from.
+  - apiGroups: [""]
+    resources: ["namespaces", "pods"]
+    verbs: ["get", "list"]
+
+  # ReplicaSets are needed to walk a pod's ownerReferences back to the
+  # Deployment that owns it. Without them, pod metrics cannot be attributed
+  # to a workload.
+  - apiGroups: ["apps"]
+    resources: ["deployments", "statefulsets", "daemonsets", "replicasets"]
+    verbs: ["get", "list"]
+
+  - apiGroups: ["autoscaling"]
+    resources: ["horizontalpodautoscalers"]
+    verbs: ["get", "list"]
+
+  - apiGroups: ["networking.k8s.io"]
+    resources: ["networkpolicies"]
+    verbs: ["get", "list"]
+
+  # Served by metrics-server. Tare degrades to a stated absence when this API
+  # is not present, so granting it is optional.
+  - apiGroups: ["metrics.k8s.io"]
+    resources: ["pods"]
+    verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: tare-reader
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: tare-reader
+subjects:
+  - kind: ServiceAccount
+    name: tare
+    namespace: kube-system
