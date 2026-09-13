@@ -2,9 +2,12 @@
 package cluster
 
 import (
+	"context"
 	"fmt"
 	"time"
 
+	appsv1 "k8s.io/api/apps/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/version"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
@@ -72,4 +75,61 @@ func Connect(opts Options) (*Client, error) {
 // failure here is a connection problem and never an RBAC one.
 func (c *Client) ServerVersion() (*version.Info, error) {
 	return c.clientset.Discovery().ServerVersion()
+}
+
+// The API server returns every result in one response when Limit is unset,
+// which is a large allocation on a big cluster. Paging bounds each response;
+// the Continue loop in listAll keeps the overall result complete.
+const listPageSize = 500
+
+// listAll drains a paginated List. page fetches one page and returns its items
+// plus the server's continue token, which is empty on the final page. Skipping
+// this loop is the classic client-go bug: a Limit with no Continue silently
+// truncates the result and reports it as complete.
+func listAll[T any](page func(metav1.ListOptions) ([]T, string, error)) ([]T, error) {
+	var out []T
+	opts := metav1.ListOptions{Limit: listPageSize}
+	for {
+		items, cont, err := page(opts)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, items...)
+		if cont == "" {
+			return out, nil
+		}
+		opts.Continue = cont
+	}
+}
+
+// An empty namespace lists across the whole cluster: metav1.NamespaceAll is
+// itself "", so the flag default and the API convention coincide.
+func (c *Client) ListDeployments(ctx context.Context, namespace string) ([]appsv1.Deployment, error) {
+	return listAll(func(opts metav1.ListOptions) ([]appsv1.Deployment, string, error) {
+		l, err := c.clientset.AppsV1().Deployments(namespace).List(ctx, opts)
+		if err != nil {
+			return nil, "", fmt.Errorf("listing deployments: %w", err)
+		}
+		return l.Items, l.Continue, nil
+	})
+}
+
+func (c *Client) ListStatefulSets(ctx context.Context, namespace string) ([]appsv1.StatefulSet, error) {
+	return listAll(func(opts metav1.ListOptions) ([]appsv1.StatefulSet, string, error) {
+		l, err := c.clientset.AppsV1().StatefulSets(namespace).List(ctx, opts)
+		if err != nil {
+			return nil, "", fmt.Errorf("listing statefulsets: %w", err)
+		}
+		return l.Items, l.Continue, nil
+	})
+}
+
+func (c *Client) ListDaemonSets(ctx context.Context, namespace string) ([]appsv1.DaemonSet, error) {
+	return listAll(func(opts metav1.ListOptions) ([]appsv1.DaemonSet, string, error) {
+		l, err := c.clientset.AppsV1().DaemonSets(namespace).List(ctx, opts)
+		if err != nil {
+			return nil, "", fmt.Errorf("listing daemonsets: %w", err)
+		}
+		return l.Items, l.Continue, nil
+	})
 }

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	_ "embed"
 	"flag"
 	"fmt"
@@ -8,6 +9,7 @@ import (
 	"path/filepath"
 
 	"github.com/Alokxk/tare/cluster"
+	"github.com/Alokxk/tare/inventory"
 )
 
 // Must stay a var: -ldflags "-X main.version=..." can only patch a string
@@ -78,8 +80,22 @@ func run(cfg config) error {
 	if err != nil {
 		return fmt.Errorf("reaching the API server: %w", err)
 	}
+	fmt.Printf("Connected to Kubernetes %s\n\n", v.GitVersion)
 
-	fmt.Printf("Connected to Kubernetes %s (%s/%s)\n", v.GitVersion, v.Platform, v.GoVersion)
+	ctx := context.Background()
+	workloads, err := inventory.Collect(ctx, client, cfg.namespace)
+	if err != nil {
+		return err
+	}
+
+	scope := "all namespaces"
+	if cfg.namespace != "" {
+		scope = "namespace " + cfg.namespace
+	}
+	fmt.Printf("%d workloads across %s\n", len(workloads), scope)
+	for _, w := range workloads {
+		fmt.Printf("  %-12s %s/%s\n", w.Kind, w.Namespace, w.Name)
+	}
 	return nil
 }
 
