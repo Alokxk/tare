@@ -1,0 +1,15 @@
+initContainers:
+  - name: istio-proxy
+    image: proxy
+    restartPolicy: Always
+    resources:
+      requests: {cpu: 100m, memory: 128Mi}
+  - name: migrate
+    image: migrator
+    resources:
+      requests: {cpu: 2, memory: 1Gi}
+containers:
+  - name: web
+    image: nginx
+    resources:
+      requests: {cpu: 100m, memory: 128Mi}

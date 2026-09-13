@@ -58,10 +58,10 @@ func TestCollect(t *testing.T) {
 				},
 			},
 			want: []Workload{
-				{KindDaemonSet, "alpha", "logs"},
-				{KindDeployment, "alpha", "api"},
-				{KindDeployment, "prod", "web"},
-				{KindStatefulSet, "prod", "db"},
+				{Kind: KindDaemonSet, Namespace: "alpha", Name: "logs"},
+				{Kind: KindDeployment, Namespace: "alpha", Name: "api"},
+				{Kind: KindDeployment, Namespace: "prod", Name: "web"},
+				{Kind: KindStatefulSet, Namespace: "prod", Name: "db"},
 			},
 		},
 		{
@@ -73,8 +73,8 @@ func TestCollect(t *testing.T) {
 				},
 			},
 			want: []Workload{
-				{KindDeployment, "prod", "alpha"},
-				{KindDeployment, "prod", "zeta"},
+				{Kind: KindDeployment, Namespace: "prod", Name: "alpha"},
+				{Kind: KindDeployment, Namespace: "prod", Name: "zeta"},
 			},
 		},
 	}
@@ -89,7 +89,9 @@ func TestCollect(t *testing.T) {
 				t.Fatalf("got %d workloads %+v, want %d", len(got), got, len(tt.want))
 			}
 			for i := range tt.want {
-				if got[i] != tt.want[i] {
+				if got[i].Kind != tt.want[i].Kind ||
+					got[i].Namespace != tt.want[i].Namespace ||
+					got[i].Name != tt.want[i].Name {
 					t.Errorf("index %d = %+v, want %+v", i, got[i], tt.want[i])
 				}
 			}

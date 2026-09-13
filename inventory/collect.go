@@ -22,6 +22,7 @@ type Workload struct {
 	Kind      Kind
 	Namespace string
 	Name      string
+	Resources Resources
 }
 
 // Lister is declared here rather than in package cluster so this package can
@@ -41,7 +42,10 @@ func Collect(ctx context.Context, l Lister, namespace string) ([]Workload, error
 		return nil, err
 	}
 	for _, d := range deployments {
-		out = append(out, Workload{Kind: KindDeployment, Namespace: d.Namespace, Name: d.Name})
+		out = append(out, Workload{
+			Kind: KindDeployment, Namespace: d.Namespace, Name: d.Name,
+			Resources: podResources(d.Spec.Template.Spec),
+		})
 	}
 
 	statefulSets, err := l.ListStatefulSets(ctx, namespace)
@@ -49,7 +53,10 @@ func Collect(ctx context.Context, l Lister, namespace string) ([]Workload, error
 		return nil, err
 	}
 	for _, s := range statefulSets {
-		out = append(out, Workload{Kind: KindStatefulSet, Namespace: s.Namespace, Name: s.Name})
+		out = append(out, Workload{
+			Kind: KindStatefulSet, Namespace: s.Namespace, Name: s.Name,
+			Resources: podResources(s.Spec.Template.Spec),
+		})
 	}
 
 	daemonSets, err := l.ListDaemonSets(ctx, namespace)
@@ -57,7 +64,10 @@ func Collect(ctx context.Context, l Lister, namespace string) ([]Workload, error
 		return nil, err
 	}
 	for _, d := range daemonSets {
-		out = append(out, Workload{Kind: KindDaemonSet, Namespace: d.Namespace, Name: d.Name})
+		out = append(out, Workload{
+			Kind: KindDaemonSet, Namespace: d.Namespace, Name: d.Name,
+			Resources: podResources(d.Spec.Template.Spec),
+		})
 	}
 
 	// The API server promises no ordering. A report that is screenshotted and

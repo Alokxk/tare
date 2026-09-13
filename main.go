@@ -92,10 +92,21 @@ func run(cfg config) error {
 	if cfg.namespace != "" {
 		scope = "namespace " + cfg.namespace
 	}
-	fmt.Printf("%d workloads across %s\n", len(workloads), scope)
+	fmt.Printf("%d workloads across %s\n\n", len(workloads), scope)
+	fmt.Printf("  %-12s %-42s %-10s %-10s %s\n", "KIND", "WORKLOAD", "CPU REQ", "MEM REQ", "QOS")
 	for _, w := range workloads {
-		fmt.Printf("  %-12s %s/%s\n", w.Kind, w.Namespace, w.Name)
+		r := w.Resources
+		cpu, mem := r.CPURequest.String(), r.MemRequest.String()
+		if r.PartialCPURequest {
+			cpu += "*"
+		}
+		if r.PartialMemRequest {
+			mem += "*"
+		}
+		fmt.Printf("  %-12s %-42s %-10s %-10s %s\n",
+			w.Kind, w.Namespace+"/"+w.Name, cpu, mem, r.QoS)
 	}
+	fmt.Println("\n  * at least one container sets no request; the total is a floor")
 	return nil
 }
 

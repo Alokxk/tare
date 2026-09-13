@@ -1,0 +1,9 @@
+containers:
+  - name: web
+    image: nginx
+    resources:
+      requests: {cpu: 100m, memory: 128Mi}
+  - name: sidecar
+    image: helper
+    resources:
+      requests: {memory: 64Mi}

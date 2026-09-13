@@ -1,0 +1,14 @@
+initContainers:
+  - name: wait
+    image: busybox
+    resources:
+      requests: {cpu: 10m, memory: 16Mi}
+containers:
+  - name: web
+    image: nginx
+    resources:
+      requests: {cpu: 100m, memory: 128Mi}
+  - name: worker
+    image: worker
+    resources:
+      requests: {cpu: 200m, memory: 256Mi}

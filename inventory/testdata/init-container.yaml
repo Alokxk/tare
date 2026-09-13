@@ -1,0 +1,10 @@
+initContainers:
+  - name: migrate
+    image: migrator
+    resources:
+      requests: {cpu: 2, memory: 1Gi}
+containers:
+  - name: web
+    image: nginx
+    resources:
+      requests: {cpu: 100m, memory: 128Mi}
